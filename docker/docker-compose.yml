@@ -1,0 +1,15 @@
+version: '3'
+services:
+  redis:
+    image: redis:latest
+    ports:
+      - "16379:6379"
+  mysql:
+    image: mysql:latest
+    volumes:
+      - ./mysql/db:/docker-entrypoint-initdb.d  #初期データ
+    environment:
+      - "MYSQL_DATABASE=db"
+      - "MYSQL_ALLOW_EMPTY_PASSWORD=yes"
+    ports:
+      - "13306:3306"
