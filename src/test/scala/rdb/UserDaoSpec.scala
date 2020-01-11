@@ -16,7 +16,7 @@ class UserDaoSpec extends FlatSpec with Matchers with BeforeAndAfter {
 
   "UserDao" should "fetchById" in {
 
-    val userDao: UserDao = new UserDao(pool)
+    val userDao: UserDao = new UserDao() (pool)
     val userId           = UserId(UUID.fromString("b73976f4-36e8-4a56-976a-bf75030f23eb"))
     userDao.fetchById(userId) shouldEqual Some(
       User(
