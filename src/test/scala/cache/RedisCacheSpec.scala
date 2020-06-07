@@ -144,9 +144,62 @@ class RedisCacheSpec extends FlatSpec with Matchers with BeforeAndAfter {
     userCache.get("user1") shouldEqual None
     redis.set("foo", "bar")
     redis.get("foo") shouldEqual Some("bar")
+    redis.get("user2") shouldEqual None
     userCache.flush()
     userCache.get("user2") shouldEqual None
     redis.get("foo") shouldEqual Some("bar")
+  }
+
+  "RedisCache" should "withHash (getAll)" in {
+    val redis = new DefaultRedisCache(pool)
+
+    redis.set("default1", "value1")
+    redis.set("default2", "value2")
+    redis.getAll() shouldEqual Map(
+      "default1" -> "value1",
+      "default2" -> "value2"
+    )
+
+    val userCache = redis.withHash("user")
+    userCache.set("user1", "value1")
+    userCache.set("user2", "value2")
+    userCache.getAll() shouldEqual Map(
+      "user1" -> "value1",
+      "user2" -> "value2"
+    )
+
+    case class Image(title: String, url: String)
+    case class ImageId(value: Int)
+
+    import io.circe._
+    import io.circe.syntax._
+    import io.circe.generic.semiauto._
+
+    val imageDecoder: String => Image =
+      parser.parse(_).flatMap(_.as[Image](deriveDecoder)).getOrElse(throw new RuntimeException("decode error"))
+    val imageEncoder: Image => String = _.asJson(deriveEncoder).noSpaces
+
+    val imageCache = redis
+      .withHash("image")
+      .mapValue(imageDecoder, imageEncoder)
+      .mapKey(k => ImageId(k.toInt), (_: ImageId).value.toString)
+    imageCache.mset(
+      Map(
+        ImageId(1) -> Image("image1", "http://example.com/images/001.jpg"),
+        ImageId(2) -> Image("image2", "http://example.com/images/002.jpg"),
+        ImageId(3) -> Image("image3", "http://example.com/images/003.jpg")
+      )
+    )
+    imageCache.getAll() shouldEqual Map(
+      ImageId(1) -> Image("image1", "http://example.com/images/001.jpg"),
+      ImageId(2) -> Image("image2", "http://example.com/images/002.jpg"),
+      ImageId(3) -> Image("image3", "http://example.com/images/003.jpg")
+    )
+
+    redis.getAll() shouldEqual Map(
+      "default1" -> "value1",
+      "default2" -> "value2"
+    )
   }
 
   "RedisCache" should "cache something" in {
